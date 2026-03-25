@@ -1,7 +1,7 @@
 import java.util.*;
 
 /**
- * UC7: Add-On Service Selection
+ * UC8: Booking History & Reporting
  */
 
 // Reservation
@@ -23,79 +23,64 @@ class Reservation {
     public String getGuestName() {
         return guestName;
     }
-}
 
-// Service
-class Service {
-    private String name;
-    private double price;
-
-    public Service(String name, double price) {
-        this.name = name;
-        this.price = price;
-    }
-
-    public String getName() {
-        return name;
-    }
-
-    public double getPrice() {
-        return price;
+    public String getRoomType() {
+        return roomType;
     }
 }
 
-// Manager
-class AddOnServiceManager {
-    private Map<String, List<Service>> serviceMap = new HashMap<>();
+// 🔥 Booking History (stores data)
+class BookingHistory {
 
-    public void addService(String reservationId, Service service) {
-        serviceMap.putIfAbsent(reservationId, new ArrayList<>());
-        serviceMap.get(reservationId).add(service);
+    private List<Reservation> history = new ArrayList<>();
+
+    // Add confirmed booking
+    public void addReservation(Reservation r) {
+        history.add(r);
     }
 
-    public void displayServices(String reservationId) {
-        System.out.println("\nServices for " + reservationId);
-
-        List<Service> list = serviceMap.get(reservationId);
-
-        if (list != null) {
-            for (Service s : list) {
-                System.out.println(s.getName() + " - " + s.getPrice());
-            }
-        } else {
-            System.out.println("No services");
-        }
+    // Get all bookings
+    public List<Reservation> getAllReservations() {
+        return history;
     }
+}
 
-    public double getTotalCost(String reservationId) {
-        double total = 0;
+// 🔥 Reporting Service (only reads data)
+class BookingReportService {
 
-        List<Service> list = serviceMap.get(reservationId);
+    public void generateReport(List<Reservation> list) {
 
-        if (list != null) {
-            for (Service s : list) {
-                total += s.getPrice();
-            }
+        System.out.println("\n=== Booking Report ===");
+
+        for (Reservation r : list) {
+            System.out.println("ID: " + r.getReservationId()
+                    + " | Guest: " + r.getGuestName()
+                    + " | Room: " + r.getRoomType());
         }
 
-        return total;
+        System.out.println("\nTotal Bookings: " + list.size());
     }
 }
 
-// MAIN CLASS
+// MAIN
 public class BookMyStay {
 
     public static void main(String[] args) {
 
-        Reservation r = new Reservation("Rithanya", "Single", "RES1");
+        BookingHistory history = new BookingHistory();
+        BookingReportService reportService = new BookingReportService();
 
-        AddOnServiceManager manager = new AddOnServiceManager();
+        // Assume these are confirmed bookings (from UC6)
+        Reservation r1 = new Reservation("Rithanya", "Single", "RES1");
+        Reservation r2 = new Reservation("Arun", "Double", "RES2");
+        Reservation r3 = new Reservation("Priya", "Suite", "RES3");
 
-        manager.addService("RES1", new Service("Breakfast", 500));
-        manager.addService("RES1", new Service("Spa", 1500));
+        // Store in history
+        history.addReservation(r1);
+        history.addReservation(r2);
+        history.addReservation(r3);
 
-        manager.displayServices("RES1");
-
-        System.out.println("Total Cost: " + manager.getTotalCost("RES1"));
+        // Generate report
+        reportService.generateReport(history.getAllReservations());
     }
 }
