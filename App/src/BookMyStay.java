@@ -1,11 +1,12 @@
+import java.io.*;
 import java.util.*;
 
 /**
- * UC11: Concurrent Booking Simulation
+ * UC12: Data Persistence & System Recovery
  */
 
-// Reservation
-class Reservation {
+// Reservation (Serializable)
+class Reservation implements Serializable {
     private String guestName;
     private String roomType;
 
@@ -23,54 +24,50 @@ class Reservation {
     }
 }
 
-// Shared Inventory (CRITICAL RESOURCE)
-class RoomInventory {
+// Inventory (Serializable)
+class RoomInventory implements Serializable {
     private Map<String, Integer> inventory = new HashMap<>();
 
     public RoomInventory() {
-        inventory.put("Single", 1); // only 1 room → conflict demo
+        inventory.put("Single", 2);
+        inventory.put("Double", 1);
     }
 
-    // 🔥 synchronized → only one thread enters at a time
-    public synchronized boolean bookRoom(String type) {
-
-        if (inventory.getOrDefault(type, 0) > 0) {
-
-            System.out.println(Thread.currentThread().getName()
-                    + " booking...");
-
-            // simulate delay (race condition)
-            try { Thread.sleep(100); } catch (Exception e) {}
-
-            inventory.put(type, inventory.get(type) - 1);
-
-            System.out.println(Thread.currentThread().getName()
-                    + " SUCCESS");
-
-            return true;
-        }
-
-        System.out.println(Thread.currentThread().getName()
-                + " FAILED (No rooms)");
-
-        return false;
+    public Map<String, Integer> getInventory() {
+        return inventory;
     }
 }
 
-// Booking Task (Thread)
-class BookingTask implements Runnable {
+// 🔥 Persistence Service
+class PersistenceService {
 
-    private Reservation reservation;
-    private RoomInventory inventory;
+    private static final String FILE_NAME = "data.ser";
 
-    public BookingTask(Reservation r, RoomInventory inventory) {
-        this.reservation = r;
-        this.inventory = inventory;
+    // SAVE
+    public void save(RoomInventory inventory, List<Reservation> bookings) {
+        try (ObjectOutputStream out = new ObjectOutputStream(new FileOutputStream(FILE_NAME))) {
+            out.writeObject(inventory);
+            out.writeObject(bookings);
+            System.out.println("Data saved successfully!");
+        } catch (Exception e) {
+            System.out.println("Error saving data!");
+        }
     }
 
-    @Override
-    public void run() {
-        inventory.bookRoom(reservation.getRoomType());
+    // LOAD
+    public Object[] load() {
+        try (ObjectInputStream in = new ObjectInputStream(new FileInputStream(FILE_NAME))) {
+
+            RoomInventory inventory = (RoomInventory) in.readObject();
+            List<Reservation> bookings = (List<Reservation>) in.readObject();
+
+            System.out.println("Data loaded successfully!");
+            return new Object[]{inventory, bookings};
+
+        } catch (Exception e) {
+            System.out.println("No previous data found. Starting fresh.");
+            return null;
+        }
     }
 }
 
@@ -79,16 +76,32 @@ public class BookMyStay {
 
     public static void main(String[] args) {
 
-        RoomInventory inventory = new RoomInventory();
+        PersistenceService service = new PersistenceService();
 
-        // 2 users → 1 room → conflict
-        Reservation r1 = new Reservation("Rithanya", "Single");
-        Reservation r2 = new Reservation("Arun", "Single");
+        // Try loading old data
+        Object[] data = service.load();
 
-        Thread t1 = new Thread(new BookingTask(r1, inventory), "User-1");
-        Thread t2 = new Thread(new BookingTask(r2, inventory), "User-2");
+        RoomInventory inventory;
+        List<Reservation> bookings;
 
-        t1.start();
-        t2.start();
+        if (data != null) {
+            inventory = (RoomInventory) data[0];
+            bookings = (List<Reservation>) data[1];
+        } else {
+            inventory = new RoomInventory();
+            bookings = new ArrayList<>();
+        }
+
+        // Add new booking
+        bookings.add(new Reservation("Rithanya", "Single"));
+
+        // Display current state
+        System.out.println("\nCurrent Bookings:");
+        for (Reservation r : bookings) {
+            System.out.println(r.getGuestName() + " → " + r.getRoomType());
+        }
+
+        // Save before exit
+        service.save(inventory, bookings);
     }
 }
